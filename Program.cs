@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 
 namespace GroupLinqExamples
 {
@@ -12,7 +13,9 @@ namespace GroupLinqExamples
             sc.QueryHighScores(1, 90);
             sc.GroupByRange();
             sc.GroupByBoolean();
-
+            sc.ExampleAllAny();
+            sc.ReflectionExample();
+            sc.SetOperationsExamples();
             // Keep the console window open in debug mode.
             Console.WriteLine("Press any key to exit");
             Console.ReadKey();
@@ -135,6 +138,93 @@ namespace GroupLinqExamples
                     foreach (var student in studentGroup)
                         Console.WriteLine($"\t{student.FirstName} {student.LastName}");
                 }
+            }
+           internal class Market
+            {
+                public string Name { get; set; }
+                public string[] Items { get; set; }
+            }
+            public void ExampleAllAny()
+            {
+                List<Market> markets = new List<Market>
+                  {
+                  new Market { Name = "Emily's", Items = new string[] { "kiwi", "cheery", "banana" } },
+                  new Market { Name = "Kim's", Items = new string[] { "melon", "mango", "olive" } },
+                  new Market { Name = "Adam's", Items = new string[] { "kiwi", "apple", "orange" } },
+                  };
+                // Determine which market have all fruit names length equal to 5
+                IEnumerable<string> names = from market in markets
+                                            where market.Items.All(item => item.Length == 5)
+                                            select market.Name;
+
+                // Determine which market have any(if there is at least one) fruit names length equal to 5
+                IEnumerable<string> anyNames = from market in markets
+                                            where market.Items.Any(item => item.Length == 5)
+                                            select market.Name;
+
+                // Determine which market have any fruit names start with 'o'
+                IEnumerable<string> namesWhereFruitStartWithO = from market in markets
+                                            where market.Items.Any(item => item.StartsWith("o"))
+                                            select market.Name;
+                // Determine which market offers kiwi
+                IEnumerable<string> kiwiMarkets = from market in markets
+                                            where market.Items.Contains("kiwi")
+                                            select market.Name;
+
+            }
+            public void ReflectionExample()
+            {
+                Assembly assembly = Assembly.Load("System.Core, Version=3.5.0.0, Culture=neutral, PublicKeyToken= b77a5c561934e089");
+                var pubTypesQuery = from type in assembly.GetTypes()
+                                    where type.IsPublic
+                                    from method in type.GetMethods()
+                                    where method.ReturnType.IsArray == true
+                                        || (method.ReturnType.GetInterface(
+                                            typeof(System.Collections.Generic.IEnumerable<>).FullName) != null
+                                        && method.ReturnType.FullName != "System.String")
+                                    group method.ToString() by type.ToString();
+
+                foreach (var groupOfMethods in pubTypesQuery)
+                {
+                    Console.WriteLine("Type: {0}", groupOfMethods.Key);
+                    foreach (var method in groupOfMethods)
+                    {
+                        Console.WriteLine("  {0}", method);
+                    }
+                }
+
+            }
+            //Set operations in LINQ refer to query operations that produce a result set that is based on the presence or absence of equivalent elements within the same or separate collections (or sets).
+            public void SetOperationsExamples()
+            {
+                string[] planetsDuplicates = { "Mercury", "Venus", "Venus", "Earth", "Mars", "Earth" };
+                string[] planets1 = { "Mercury", "Venus", "Earth", "Jupiter" };
+                string[] planets2 = { "Mercury", "Earth", "Mars", "Jupiter" };
+
+                var removedDuplicates = planetsDuplicates.Distinct();
+                //or
+                IEnumerable<string> removedDuplicatesQueryExp = from planet in planetsDuplicates.Distinct()
+                                            select planet;
+
+                //The returned sequence contains only the elements from the first input sequence that are not in the second input sequence.
+                IEnumerable<string> planetsFrom1ThatAreNOTIn2 = planets1.Except(planets2);
+                //same thing??!
+                var test = planets1.Where(x => !planets2.Contains(x));
+
+                //intersecting The returned sequence contains the elements that are common to both(same) of the input sequences.
+
+                IEnumerable<string> queryIntersect = from planet in planets1.Intersect(planets2)
+                                            select planet;
+
+                //same thing??!
+                var testIntersect = planets1.Where(x => planets2.Contains(x));
+
+
+                //The returned sequence contains the unique elements from both input sequences.
+                IEnumerable<string> query = from planet in planets1.Union(planets2)
+                                            select planet;
+
+
             }
         }
     }
